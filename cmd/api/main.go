@@ -42,6 +42,7 @@ func main() {
 
 	http.HandleFunc("GET /health", loggingMiddleware(healthCheck))
 
+	http.HandleFunc("GET /user", loggingMiddleware(userHandler.GetAll))
 	http.HandleFunc("POST /user", loggingMiddleware(userHandler.Create))
 
 	log.Print("Listening on port 8080...")
@@ -55,7 +56,7 @@ func healthCheck(w http.ResponseWriter, req *http.Request) {
 
 func loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log.Print(req.URL.Path, "Initializing logging middleware")
+		log.Print(req.URL.Path, " Initializing logging middleware")
 		start := time.Now()
 
 		recorder := &statusRecorder{
