@@ -151,17 +151,17 @@ func (uh *UserHandler) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err != nil {
-		log.Print(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	_, err = uh.ur.Delete(req.Context(), req.PathValue("id"), password.Password)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
+
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
 
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "22P02" {
@@ -185,7 +185,7 @@ func (uh *UserHandler) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 	w.Write([]byte("200 - User deleted"))
 }
 

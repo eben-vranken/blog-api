@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 
 	"github.com/eben-vranken/blog-api/internal/auth"
 	"github.com/eben-vranken/blog-api/internal/models"
@@ -13,6 +12,8 @@ import (
 type UserRepository struct {
 	db *sql.DB
 }
+
+var ErrInvalidPassword = errors.New("invalid password")
 
 func (ur UserRepository) Create(ctx context.Context, user models.User) (models.UserResponse, error) {
 	var userResponse models.UserResponse
@@ -82,7 +83,7 @@ func (ur UserRepository) GetSpecific(ctx context.Context, id string) (models.Use
 	return user, err
 }
 
-func (ur UserRepository) Delete(ctx context.Context, id string, hashedPassword string) (sql.Result, error) {
+func (ur UserRepository) Delete(ctx context.Context, id string, password string) (sql.Result, error) {
 	var user models.User
 
 	err := ur.db.QueryRowContext(ctx, `SELECT
@@ -94,15 +95,13 @@ func (ur UserRepository) Delete(ctx context.Context, id string, hashedPassword s
 		return nil, err
 	}
 
-	log.Print(auth.CheckPassword(user.PasswordHash, hashedPassword))
-
-	if auth.CheckPassword(hashedPassword, user.PasswordHash) {
+	if auth.CheckPassword(password, user.PasswordHash) {
 		result, err := ur.db.ExecContext(ctx, `DELETE FROM users WHERE user_id = $1`, id)
 
 		return result, err
 	}
 
-	return nil, errors.New("Passwords do not match.")
+	return nil, ErrInvalidPassword
 }
 
 func CreateUserRepository(db *sql.DB) UserRepository {
