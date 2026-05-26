@@ -146,8 +146,8 @@ func (uh *UserHandler) Delete(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
 		return
 	}
 
@@ -195,8 +195,8 @@ func (uh *UserHandler) Update(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
 		return
 	}
 
@@ -241,7 +241,7 @@ func (uh *UserHandler) Update(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func CreateUserHandler(ur *repository.UserRepository) UserHandler {

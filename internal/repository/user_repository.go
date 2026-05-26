@@ -42,11 +42,13 @@ func (ur UserRepository) GetAll(ctx context.Context) ([]models.UserResponse, err
 	created_at
 	FROM users;`)
 
-	var users []models.UserResponse = []models.UserResponse{}
-
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
+
+	var users []models.UserResponse = []models.UserResponse{}
 
 	for rows.Next() {
 		var user models.UserResponse
