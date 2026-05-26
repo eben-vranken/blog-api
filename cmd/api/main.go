@@ -44,6 +44,8 @@ func main() {
 
 	http.HandleFunc("GET /user", loggingMiddleware(userHandler.GetAll))
 	http.HandleFunc("POST /user", loggingMiddleware(userHandler.Create))
+	http.HandleFunc("GET /user/{id}", loggingMiddleware(userHandler.GetSpecific))
+	http.HandleFunc("DELETE /user/{id}", loggingMiddleware(userHandler.Delete))
 
 	log.Print("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
