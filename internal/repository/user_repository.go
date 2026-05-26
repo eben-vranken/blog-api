@@ -104,6 +104,32 @@ func (ur UserRepository) Delete(ctx context.Context, id string, password string)
 	return nil, ErrInvalidPassword
 }
 
+func (ur UserRepository) Update(ctx context.Context, id string, userInfoToUpdate models.UserUpdateRequest) (sql.Result, error) {
+	var user models.User
+
+	err := ur.db.QueryRowContext(ctx, `SELECT
+	password_hash
+	FROM users 
+	WHERE user_id = $1;`, id).Scan(&user.PasswordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if auth.CheckPassword(userInfoToUpdate.CurrentPassword, user.PasswordHash) {
+		result, err := ur.db.ExecContext(ctx, `UPDATE users SET
+		first_name = $1,
+		last_name = $2,
+		email = $3,
+		username = $4
+		WHERE user_id = $5`, userInfoToUpdate.FirstName, userInfoToUpdate.LastName, userInfoToUpdate.Email, userInfoToUpdate.Username, id)
+
+		return result, err
+	}
+
+	return nil, ErrInvalidPassword
+}
+
 func CreateUserRepository(db *sql.DB) UserRepository {
 	t := new(UserRepository)
 	t.db = db

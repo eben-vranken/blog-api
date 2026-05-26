@@ -158,7 +158,7 @@ func (uh *UserHandler) Delete(w http.ResponseWriter, req *http.Request) {
 
 		if errors.Is(err, repository.ErrInvalidPassword) {
 			log.Print(err)
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("401 - Unauthorized"))
 			return
 		}
@@ -186,7 +186,62 @@ func (uh *UserHandler) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	w.Write([]byte("200 - User deleted"))
+}
+
+func (uh *UserHandler) Update(w http.ResponseWriter, req *http.Request) {
+	var userInfoToUpdate models.UserUpdateRequest
+
+	err := json.NewDecoder(req.Body).Decode(&userInfoToUpdate)
+
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	_, err = uh.ur.Update(req.Context(), req.PathValue("id"), userInfoToUpdate)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				log.Print(err)
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte("A user with this value already exists. Please check for duplicates."))
+				return
+			}
+
+			if pgErr.Code == "22P02" {
+				log.Print(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("400 - Bad request\nID must be an integer"))
+				return
+			}
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - User not found"))
+			return
+		}
+
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Internal server error"))
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func CreateUserHandler(ur *repository.UserRepository) UserHandler {
