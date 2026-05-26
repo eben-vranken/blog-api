@@ -37,16 +37,26 @@ func main() {
 		log.Fatal("Failed to connect to database", err)
 	}
 
+	http.HandleFunc("GET /health", loggingMiddleware(healthCheck))
+
+	// User Routes
 	userRepository := repository.CreateUserRepository(db)
 	userHandler := handlers.CreateUserHandler(&userRepository)
-
-	http.HandleFunc("GET /health", loggingMiddleware(healthCheck))
 
 	http.HandleFunc("GET /user", loggingMiddleware(userHandler.GetAll))
 	http.HandleFunc("POST /user", loggingMiddleware(userHandler.Create))
 	http.HandleFunc("GET /user/{id}", loggingMiddleware(userHandler.GetSpecific))
 	http.HandleFunc("DELETE /user/{id}", loggingMiddleware(userHandler.Delete))
 	http.HandleFunc("PUT /user/{id}", loggingMiddleware(userHandler.Update))
+
+	// Post Routes
+	postRepository := repository.CreatePostRepository(db)
+	postHandler := handlers.CreatePostHandler(postRepository)
+
+	// http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAll))
+	http.HandleFunc("POST /post/draft", loggingMiddleware(postHandler.CreateDraft))
+	http.HandleFunc("PUT /post/publish/{id}", loggingMiddleware(postHandler.PublishDraft))
+	
 
 	log.Print("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
