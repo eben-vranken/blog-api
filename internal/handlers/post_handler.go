@@ -17,7 +17,7 @@ type PostHandler struct {
 }
 
 func (ph *PostHandler) CreateDraft(w http.ResponseWriter, req *http.Request) {
-	var post models.Post
+	var post models.PostRequest
 
 	decoder := json.NewDecoder(req.Body)
 
@@ -30,9 +30,34 @@ func (ph *PostHandler) CreateDraft(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	post, err = ph.pr.CreateDraft(req.Context(), post)
+	createdPost, err := ph.pr.CreateDraft(req.Context(), post)
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "22P02" {
+				log.Print(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("400 - Bad request\nID must be an integer"))
+				return
+			}
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - Post not found"))
+			return
+		}
+
 		log.Print(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - Internal server error"))
@@ -41,7 +66,7 @@ func (ph *PostHandler) CreateDraft(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(post)
+	err = json.NewEncoder(w).Encode(createdPost)
 
 	if err != nil {
 		log.Print(err)
@@ -49,10 +74,28 @@ func (ph *PostHandler) CreateDraft(w http.ResponseWriter, req *http.Request) {
 }
 
 func (ph *PostHandler) PublishDraft(w http.ResponseWriter, req *http.Request) {
-	post, err := ph.pr.PublishDraft(req.Context(), req.PathValue("id"))
+	var editRequest models.ProtectedPostRequest
+
+	err := json.NewDecoder(req.Body).Decode(&editRequest)
+
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
+		return
+	}
+
+	post, err := ph.pr.PublishDraft(req.Context(), req.PathValue("id"), editRequest)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
+
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
 
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "22P02" {
@@ -79,6 +122,120 @@ func (ph *PostHandler) PublishDraft(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(post)
+
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func (ph *PostHandler) GetAllPublished(w http.ResponseWriter, req *http.Request) {
+	posts, err := ph.pr.GetAllPublished(req.Context())
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - Post not found"))
+			return
+		}
+
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Internal server error"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(posts)
+
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func (ph *PostHandler) GetAllDrafts(w http.ResponseWriter, req *http.Request) {
+	var postRequest models.ProtectedPostRequest
+
+	err := json.NewDecoder(req.Body).Decode(&postRequest)
+
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
+		return
+	}
+
+	posts, err := ph.pr.GetAllDrafts(req.Context(), postRequest)
+
+	if err != nil {
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - Post not found"))
+			return
+		}
+
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Internal server error"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(posts)
+
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func (ph *PostHandler) GetAllArchived(w http.ResponseWriter, req *http.Request) {
+	var postRequest models.ProtectedPostRequest
+
+	err := json.NewDecoder(req.Body).Decode(&postRequest)
+
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
+		return
+	}
+
+	posts, err := ph.pr.GetAllArchived(req.Context(), postRequest)
+
+	if err != nil {
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - Post not found"))
+			return
+		}
+
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Internal server error"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(posts)
 
 	if err != nil {
 		log.Print(err)

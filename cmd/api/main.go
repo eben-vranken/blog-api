@@ -56,7 +56,9 @@ func main() {
 	// http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAll))
 	http.HandleFunc("POST /post/draft", loggingMiddleware(postHandler.CreateDraft))
 	http.HandleFunc("PUT /post/publish/{id}", loggingMiddleware(postHandler.PublishDraft))
-	
+	http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAllPublished))
+	http.HandleFunc("GET /post/draft", loggingMiddleware(postHandler.GetAllDrafts))
+	http.HandleFunc("GET /post/archived", loggingMiddleware(postHandler.GetAllArchived))
 
 	log.Print("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
