@@ -56,6 +56,7 @@ func main() {
 	// http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAll))
 	http.HandleFunc("POST /post/draft", loggingMiddleware(postHandler.CreateDraft))
 	http.HandleFunc("PUT /post/publish/{id}", loggingMiddleware(postHandler.PublishDraft))
+	http.HandleFunc("PUT /post/archive/{id}", loggingMiddleware(postHandler.ArchivePost))
 	http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAllPublished))
 	http.HandleFunc("GET /post/draft", loggingMiddleware(postHandler.GetAllDrafts))
 	http.HandleFunc("GET /post/archived", loggingMiddleware(postHandler.GetAllArchived))
