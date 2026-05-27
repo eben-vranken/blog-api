@@ -257,6 +257,34 @@ func (pr PostRepository) DeletePost(ctx context.Context, postId string, editRequ
 	return result, err
 }
 
+func (pr PostRepository) Update(ctx context.Context, postId string, editRequest models.PostRequest) (*models.Post, error) {
+	var user models.User
+
+	err := pr.db.QueryRowContext(ctx, `SELECT
+	password_hash
+	FROM users 
+	WHERE user_id = $1;`, editRequest.UserID).Scan(&user.PasswordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.CheckPassword(editRequest.Password, user.PasswordHash) {
+		return nil, ErrInvalidPassword
+	}
+
+	var post models.Post
+
+	err = pr.db.QueryRowContext(ctx, `UPDATE posts SET
+	title = $1,
+	content = $2,
+	updated_at = NOW()
+	WHERE post_id = $3 AND user_id = $4
+	RETURNING post_id, user_id, title, content, status, created_at, published_at, updated_at;`, editRequest.Title, editRequest.Content, postId, editRequest.UserID).Scan(&post.PostID, &post.UserID, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.PublishedAt, &post.UpdatedAt)
+
+	return &post, err
+}
+
 func CreatePostRepository(db *sql.DB) PostRepository {
 	t := new(PostRepository)
 	t.db = db
