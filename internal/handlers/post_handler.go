@@ -297,6 +297,61 @@ func (ph *PostHandler) GetAllArchived(w http.ResponseWriter, req *http.Request) 
 	}
 }
 
+func (ph *PostHandler) DeletePost(w http.ResponseWriter, req *http.Request) {
+	var editRequest models.ProtectedPostRequest
+
+	err := json.NewDecoder(req.Body).Decode(&editRequest)
+
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400 - Bad Request"))
+		return
+	}
+
+	result, err := ph.pr.DeletePost(req.Context(), req.PathValue("id"), editRequest)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.Is(err, repository.ErrInvalidPassword) {
+			log.Print(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "22P02" {
+				log.Print(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("400 - Bad request\nID must be an integer"))
+				return
+			}
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - Post not found"))
+			return
+		}
+
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Internal server error"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
+	err = json.NewEncoder(w).Encode(result)
+
+	if err != nil {
+		log.Print(err)
+	}
+}
+
 func CreatePostHandler(pr repository.PostRepository) PostHandler {
 	t := new(PostHandler)
 	t.pr = &pr

@@ -234,6 +234,29 @@ func (pr PostRepository) GetAllArchived(ctx context.Context, postRequest models.
 	return posts, err
 }
 
+func (pr PostRepository) DeletePost(ctx context.Context, postId string, editRequest models.ProtectedPostRequest) (sql.Result, error) {
+	var user models.User
+
+	err := pr.db.QueryRowContext(ctx, `SELECT
+	password_hash
+	FROM users 
+	WHERE user_id = $1;`, editRequest.UserID).Scan(&user.PasswordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.CheckPassword(editRequest.Password, user.PasswordHash) {
+		return nil, ErrInvalidPassword
+	}
+
+	result, err := pr.db.ExecContext(ctx, `DELETE FROM posts
+	WHERE post_id = $1 AND user_id = $2
+	`, postId, editRequest.UserID)
+
+	return result, err
+}
+
 func CreatePostRepository(db *sql.DB) PostRepository {
 	t := new(PostRepository)
 	t.db = db
