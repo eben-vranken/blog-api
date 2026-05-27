@@ -58,8 +58,11 @@ func main() {
 	http.HandleFunc("PUT /post/publish/{id}", loggingMiddleware(postHandler.PublishDraft))
 	http.HandleFunc("PUT /post/archive/{id}", loggingMiddleware(postHandler.ArchivePost))
 	http.HandleFunc("GET /post", loggingMiddleware(postHandler.GetAllPublished))
+	http.HandleFunc("GET /post/{id}", loggingMiddleware(postHandler.GetSpecificPublished))
 	http.HandleFunc("GET /post/draft", loggingMiddleware(postHandler.GetAllDrafts))
+	http.HandleFunc("GET /post/draft/{id}", loggingMiddleware(postHandler.GetSpecificDraft))
 	http.HandleFunc("GET /post/archived", loggingMiddleware(postHandler.GetAllArchived))
+	http.HandleFunc("GET /post/archived/{id}", loggingMiddleware(postHandler.GetSpecificArchived))
 	http.HandleFunc("DELETE /post/{id}", loggingMiddleware(postHandler.DeletePost))
 	http.HandleFunc("PUT /post/{id}", loggingMiddleware(postHandler.Update))
 

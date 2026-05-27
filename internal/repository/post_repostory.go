@@ -132,6 +132,28 @@ func (pr PostRepository) GetAllPublished(ctx context.Context) ([]models.Post, er
 	return posts, err
 }
 
+func (pr PostRepository) GetSpecificPublished(ctx context.Context, postId string) (*models.Post, error) {
+	var post models.Post
+
+	err := pr.db.QueryRowContext(ctx, `SELECT 
+	post_id,
+	user_id,
+	title,
+	content,
+	status,
+	created_at,
+	published_at,
+	updated_at
+	FROM posts
+	WHERE status='published' AND post_id=$1`, postId).Scan(&post.PostID, &post.UserID, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.PublishedAt, &post.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, err
+}
+
 func (pr PostRepository) GetAllDrafts(ctx context.Context, postRequest models.ProtectedPostRequest) ([]models.Post, error) {
 	var user models.User
 
@@ -158,7 +180,7 @@ func (pr PostRepository) GetAllDrafts(ctx context.Context, postRequest models.Pr
 	published_at,
 	updated_at
 	FROM posts
-	WHERE status='draft'`)
+	WHERE status='draft' AND user_id=$1;`, postRequest.UserID)
 
 	if err != nil {
 		return nil, err
@@ -181,6 +203,43 @@ func (pr PostRepository) GetAllDrafts(ctx context.Context, postRequest models.Pr
 	}
 
 	return posts, err
+}
+
+func (pr PostRepository) GetSpecificDraft(ctx context.Context, postRequest models.ProtectedPostRequest, postId string) (*models.Post, error) {
+	var user models.User
+
+	err := pr.db.QueryRowContext(ctx, `SELECT
+	password_hash
+	FROM users 
+	WHERE user_id = $1;`, postRequest.UserID).Scan(&user.PasswordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.CheckPassword(postRequest.Password, user.PasswordHash) {
+		return nil, ErrInvalidPassword
+	}
+
+	var post models.Post
+
+	err = pr.db.QueryRowContext(ctx, `SELECT 
+	post_id,
+	user_id,
+	title,
+	content,
+	status,
+	created_at,
+	published_at,
+	updated_at
+	FROM posts
+	WHERE status='draft' AND post_id=$1 AND user_id=$2;`, postId, postRequest.UserID).Scan(&post.PostID, &post.UserID, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.PublishedAt, &post.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, err
 }
 
 func (pr PostRepository) GetAllArchived(ctx context.Context, postRequest models.ProtectedPostRequest) ([]models.Post, error) {
@@ -209,7 +268,7 @@ func (pr PostRepository) GetAllArchived(ctx context.Context, postRequest models.
 	published_at,
 	updated_at
 	FROM posts
-	WHERE status='archived'`)
+	WHERE status='archived' AND user_id=$1;`, postRequest.UserID)
 
 	if err != nil {
 		return nil, err
@@ -232,6 +291,43 @@ func (pr PostRepository) GetAllArchived(ctx context.Context, postRequest models.
 	}
 
 	return posts, err
+}
+
+func (pr PostRepository) GetSpecificArchived(ctx context.Context, postRequest models.ProtectedPostRequest, postId string) (*models.Post, error) {
+	var user models.User
+
+	err := pr.db.QueryRowContext(ctx, `SELECT
+	password_hash
+	FROM users 
+	WHERE user_id = $1;`, postRequest.UserID).Scan(&user.PasswordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.CheckPassword(postRequest.Password, user.PasswordHash) {
+		return nil, ErrInvalidPassword
+	}
+
+	var post models.Post
+
+	err = pr.db.QueryRowContext(ctx, `SELECT 
+	post_id,
+	user_id,
+	title,
+	content,
+	status,
+	created_at,
+	published_at,
+	updated_at
+	FROM posts
+	WHERE status='archived' AND post_id=$1 AND user_id=$2`, postId, postRequest.UserID).Scan(&post.PostID, &post.UserID, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.PublishedAt, &post.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, err
 }
 
 func (pr PostRepository) DeletePost(ctx context.Context, postId string, editRequest models.ProtectedPostRequest) (sql.Result, error) {
